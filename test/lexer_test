@@ -1,0 +1,38 @@
+struct man {
+    int age;
+    float salary;
+};
+
+int get_salary() {
+    return 1;
+}
+
+int main() {
+    int a = -100;
+    int b = -0100;
+    int c = 0x100;
+    float d = -100.1;
+    float e = 100.1e2;
+    float f = .1e2;
+    float g = 100.e2;
+    char h = 'h';
+    char i = '\n';
+    "123456\"Hello, World!\""
+
+    if (a > b || c <= d || e == f && !g) {
+       //
+    } else {
+       /*
+       *ignore
+       */
+    }
+
+    h[10];
+    i.age;
+
+    while (1 + 1 - 3 > 2 * 1 / 3 % 2) {
+    }
+
+    for () {
+    }
+}

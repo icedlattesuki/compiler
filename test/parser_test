@@ -1,0 +1,50 @@
+struct s1 {
+    int a;
+    int b;
+    float c;
+    char d;
+    int arr[10];
+    char str[6];
+};
+
+struct {
+    int a;
+};
+
+int a, b, c;
+float d;
+char e;
+
+int f1(int a, int b, int c) {
+    int res = a + b - c;
+    res = res * a / b % c;
+    return res;
+}
+
+int f2() {
+    return 0;
+}
+
+int main() {
+    int a = 1;
+    struct s1 b;
+
+
+
+
+    while (-a != 1) {
+
+    }
+
+    f2();
+    f1(1,2,3);
+
+    for (a =1, b = 2;a > 1;a = a + 1;) {}
+
+    if (a > 1)
+        a = 1;
+    else
+        a = 0;
+
+    return b1.a;
+}

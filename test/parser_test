@@ -28,7 +28,7 @@ int f2() {
 int main() {
     int a = 1;
     struct s1 b;
-
+    float c, d, e;
 
 
 
@@ -39,7 +39,7 @@ int main() {
     f2();
     f1(1,2,3);
 
-    for (a =1, b = 2;a > 1;a = a + 1;) {}
+    for (a = 1;a > 1;a = a + 1;) {}
 
     if (a > 1)
         a = 1;

@@ -19,11 +19,11 @@ import com.compiler.cparser.ParserSym;
     Character character = null;
 
     public Symbol symbol(int type) {
-        return new Symbol(type, yyline, yycolumn);
+        return new Symbol(type, yyline + 1, yycolumn);
     }
 
     public Symbol symbol(int type, Object value) {
-        return new Symbol(type, yyline, yycolumn, value);
+        return new Symbol(type, yyline + 1, yycolumn, value);
     }
 %}
 
@@ -150,7 +150,7 @@ FloatLiteral = [+-]?(({Lnum} | {Dnum}) ([eE][+-]?{Lnum})?)
     \\\\            {character = '\\';charLength++;}
 }
 
-.               {throw new Error("Illegal character <" + yytext() + "> in line " + (yyline + 1));}
+.               {System.out.println("Illegal character <" + yytext() + "> in line " + (yyline + 1)); System.exit(1);}
 
 
 

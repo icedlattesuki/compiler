@@ -1,10 +1,22 @@
 package com.compiler.cparser;
 
 import com.compiler.ast.*;
+import com.compiler.ast.node.*;
 import com.compiler.cparser.ParserSym;
 import java_cup.runtime.*;
+import java.util.ArrayList;
 
 class Parser;
+
+parser code {:
+        public void syntax_error(Symbol cur_token) {
+            System.out.println("Syntax error in line " + cur_token.left);
+        }
+
+        public void report_fatal_error(String message, Object info) throws Exception {
+            throw new Exception();
+        }
+:};
 
 terminal STRUCT, INT, FLOAT, CHAR, RETURN, IF, ELSE, WHILE, FOR, ASSIGN, GT, GE, LT, LE, EQ, NEQ, PLUS, MINUS, MUL, DIV, MOD, AND, OR, NOT, DOT, COMMA, SEMI, LB, RB, LP, RP, LC, RC;
 terminal String ID, STRING_LITERAL;
@@ -13,7 +25,19 @@ terminal Float FLOAT_LITERAL;
 terminal Character CHAR_LITERAL;
 
 nonterminal Ast program;
-nonterminal AstNode ext_def_list, ext_def, specifier, ext_dec_list, func_dec, comp_st, var_dec, type, struct_specifier, opt_tag, def_list, tag, var_list, param_dec, stmt_list, stmt, exp, def, dec_list, dec, args, ext_exp, exp_list;
+nonterminal Def ext_def, ext_def_list;
+nonterminal Specifier specifier;
+nonterminal VarDec ext_dec_list, var_dec, dec_list, dec;
+nonterminal BasicType type;
+nonterminal StructType struct_specifier;
+nonterminal String opt_tag, tag;
+nonterminal FuncDec func_dec;
+nonterminal Param var_list, param_dec;
+nonterminal CompStmt comp_st;
+nonterminal VarDefList def, def_list;
+nonterminal Stmt stmt_list, stmt;
+nonterminal Exp exp;
+nonterminal Arg args;
 
 precedence right ASSIGN;
 precedence left OR;
@@ -24,101 +48,140 @@ precedence left MUL, DIV, MOD;
 precedence right NOT;
 precedence left LP, RP, LB, RB, DOT;
 
-program ::=  ext_def_list;
-ext_def_list ::= ext_def ext_def_list
+program ::=  ext_def_list:def {:
+                                Body body = new Body();
+                                TypeDef p1 = null;
+                                VarDef p2 = null;
+                                FuncDef p3 = null;
+
+                                while (def != null) {
+                                    if (def instanceof TypeDef) {
+                                        if (p1 == null) {
+                                            p1 = (TypeDef) def;
+                                            body.setTypeDefs(p1);
+                                        } else {
+                                            p1.setNext(def);
+                                            p1 = (TypeDef) def;
+                                        }
+
+                                        def = def.getNext();
+                                        p1.setNext(null);
+                                    } else if (def instanceof VarDef) {
+                                        if (p2 == null) {
+                                            p2 = (VarDef) def;
+                                            body.setVarDefs(p2);
+                                        } else {
+                                            p2.setNext(def);
+                                            p2 = (VarDef) def;
+                                        }
+
+                                        def = def.getNext();
+                                        p2.setNext(null);
+                                    } else {
+                                        if (p3 == null) {
+                                            p3 = (FuncDef) def;
+                                            body.setFuncDefs(p3);
+                                        } else {
+                                            p3.setNext(def);
+                                            p3 = (FuncDef) def;
+                                        }
+
+                                        def = def.getNext();
+                                        p3.setNext(null);
+                                    }
+                                }
+
+                                RESULT = new Ast(body);
+                              :}
+             ;
+ext_def_list ::= ext_def:def1 ext_def_list:def2 {:def1.setNext(def2);RESULT = def1;:}
                 |
                 ;
-ext_def ::= specifier ext_dec_list SEMI
-            | specifier SEMI
-            | specifier func_dec comp_st
+ext_def ::= specifier:sp ext_dec_list:dec SEMI {:RESULT = new VarDef(sp, dec);:}
+            | specifier:sp SEMI {:RESULT = new TypeDef(sp);:}
+            | specifier:sp func_dec:dec comp_st:body {:RESULT = new FuncDef(sp, dec, body);:}
             ;
-ext_dec_list ::= var_dec
-                | var_dec COMMA ext_dec_list
+ext_dec_list ::= var_dec:dec {:RESULT = dec;:}
+                | var_dec:dec1 COMMA ext_dec_list:dec2 {:dec1.setNext(dec2);RESULT = dec1;:}
                 ;
 
-specifier ::= type
-            | struct_specifier
+specifier ::= type:sp {:RESULT = sp;:}
+            | struct_specifier:sp {:RESULT = sp;:}
             ;
-type ::= INT
-        | FLOAT
-        | CHAR
+type ::= INT {:RESULT = new BasicType(ParserSym.INT);:}
+        | FLOAT {:RESULT = new BasicType(ParserSym.FLOAT);:}
+        | CHAR {:RESULT = new BasicType(ParserSym.CHAR);:}
         ;
-struct_specifier ::= STRUCT opt_tag LC def_list RC
-                    | STRUCT tag
+struct_specifier ::= STRUCT opt_tag:name LC def_list:defs RC {:RESULT = new StructType(name, defs);:}
+                    | STRUCT tag:name {:RESULT = new StructType(name, null);:}
                     ;
-opt_tag ::= ID
+opt_tag ::= ID:id {:RESULT = id;:}
             |
             ;
-tag ::= ID;
+tag ::= ID:id {:RESULT = id;:};
 
-var_dec ::= ID
-            | var_dec LB INT_LITERAL RB
+var_dec ::= ID:id {:RESULT = new VarDec(id, null, null, null);:}
+            | var_dec:dec LB INT_LITERAL:length RB {:if (dec.getLengths() == null) dec.setLengths(new ArrayList<>());dec.getLengths().add(length);RESULT = dec;:}
             ;
-func_dec ::= ID LP var_list RP
-            | ID LP RP
+func_dec ::= ID:id LP var_list:params RP {:RESULT = new FuncDec(id, params);:}
+            | ID:id LP RP {:RESULT = new FuncDec(id, null);:}
             ;
-var_list ::= param_dec
-            | param_dec COMMA var_list
+var_list ::= param_dec:param {:RESULT = param;:}
+            | param_dec:param1 COMMA var_list:param2 {:param1.setNext(param2);RESULT = param1;:}
             ;
-param_dec ::= specifier var_dec;
+param_dec ::= specifier:sp var_dec:dec {:RESULT = new Param(sp, dec, null);:};
 
-comp_st ::= LC def_list stmt_list RC;
-stmt_list ::= stmt stmt_list
+comp_st ::= LC def_list:defs stmt_list:stmts RC {:RESULT = new CompStmt(defs, stmts);:};
+stmt_list ::= stmt:stmt1 stmt_list:stmt2 {:stmt1.setNext(stmt2);RESULT = stmt1;:}
             |
             ;
-stmt ::= exp SEMI
-        | comp_st
-        | RETURN exp SEMI
+stmt ::= exp:e SEMI {:RESULT = new ExpStmt(e);:}
+        | comp_st:stmt {:RESULT = stmt;:}
+        | RETURN exp:e SEMI {:RESULT = new ReturnStmt(e);:}
 //        | IF LP exp RP stmt
-        | IF LP exp RP stmt ELSE stmt
-        | WHILE LP exp RP stmt
-        | FOR LP ext_exp SEMI exp SEMI ext_exp SEMI RP stmt
-        ;
-ext_exp ::= exp_list
-            |
-            ;
-exp_list ::= exp
-            | exp COMMA exp_list
-            ;
-
-def_list ::= def def_list
-            |
-            ;
-def ::= specifier dec_list SEMI;
-dec_list ::= dec
-            | dec COMMA dec_list
-            ;
-dec ::= var_dec
-        | var_dec ASSIGN exp
+        | IF LP exp:e RP stmt:stmt1 ELSE stmt:stmt2 {:RESULT = new IfStmt(e, stmt1, stmt2);:}
+        | WHILE LP exp:e RP stmt:stmt {:RESULT = new WhileStmt(e, stmt);:}
+        | FOR LP exp:e1 SEMI exp:e2 SEMI exp:e3 SEMI RP stmt:stmt {:RESULT = new ForStmt(e1, e2, e3, stmt);:}
         ;
 
-exp ::= exp:e1 ASSIGN exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.ASSIGN, e1, e2);:}
-        | exp:e1 AND exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.AND, e1, e2);:}
-        | exp:e1 OR exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.OR, e1, e2);:}
-        | exp:e1 GT exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.GT, e1, e2);:}
-        | exp:e1 GE exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.GE, e1, e2);:}
-        | exp:e1 LT exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.LT, e1, e2);:}
-        | exp:e1 LE exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.LE, e1, e2);:}
-        | exp:e1 EQ exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.EQ, e1, e2);:}
-        | exp:e1 NEQ exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.NEQ, e1, e2);:}
-        | exp:e1 PLUS exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.PLUS, e1, e2);:}
-        | exp:e1 MINUS exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.MINUS, e1, e2);:}
-        | exp:e1 MUL exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.MUL, e1, e2);:}
-        | exp:e1 DIV exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.DIV, e1, e2);:}
-        | exp:e1 MOD exp:e2 {:RESULT = AstUtil.constructBinaryOp(ParserSym.MOD, e1, e2);:}
+def_list ::= def:def1 def_list:def2 {:def1.setNext(def2);RESULT = def1;:}
+            |
+            ;
+def ::= specifier:sp dec_list:dec SEMI {:RESULT = new VarDefList(new VarDef(sp, dec), null);:};
+dec_list ::= dec:dec {:RESULT = dec;:}
+            | dec:dec1 COMMA dec_list:dec2 {:dec1.setNext(dec2);RESULT = dec1;:}
+            ;
+dec ::= var_dec:dec {:RESULT = dec;:}
+        | var_dec:dec ASSIGN exp:e {:dec.setExp(e);RESULT = dec;:}
+        ;
+
+exp ::= exp:e1 ASSIGN exp:e2 {:RESULT = new BinaryOp(ParserSym.ASSIGN, e1, e2);:}
+        | exp:e1 AND exp:e2 {:RESULT = new BinaryOp(ParserSym.AND, e1, e2);:}
+        | exp:e1 OR exp:e2 {:RESULT = new BinaryOp(ParserSym.OR, e1, e2);:}
+        | exp:e1 GT exp:e2 {:RESULT = new BinaryOp(ParserSym.GT, e1, e2);:}
+        | exp:e1 GE exp:e2 {:RESULT = new BinaryOp(ParserSym.GE, e1, e2);:}
+        | exp:e1 LT exp:e2 {:RESULT = new BinaryOp(ParserSym.LT, e1, e2);:}
+        | exp:e1 LE exp:e2 {:RESULT = new BinaryOp(ParserSym.LE, e1, e2);:}
+        | exp:e1 EQ exp:e2 {:RESULT = new BinaryOp(ParserSym.EQ, e1, e2);:}
+        | exp:e1 NEQ exp:e2 {:RESULT = new BinaryOp(ParserSym.NEQ, e1, e2);:}
+        | exp:e1 PLUS exp:e2 {:RESULT = new BinaryOp(ParserSym.PLUS, e1, e2);:}
+        | exp:e1 MINUS exp:e2 {:RESULT = new BinaryOp(ParserSym.MINUS, e1, e2);:}
+        | exp:e1 MUL exp:e2 {:RESULT = new BinaryOp(ParserSym.MUL, e1, e2);:}
+        | exp:e1 DIV exp:e2 {:RESULT = new BinaryOp(ParserSym.DIV, e1, e2);:}
+        | exp:e1 MOD exp:e2 {:RESULT = new BinaryOp(ParserSym.MOD, e1, e2);:}
         | LP exp:e RP {:RESULT = e;:}
-        | MINUS exp:e {:RESULT = AstUtil.constructUnaryOp(ParserSym.MINUS, e);:}
-        | NOT exp:e {:RESULT = AstUtil.constructUnaryOp(ParserSym.NOT, e);:}
-        | exp:e LP args:args RP {:RESULT = AstUtil.constructFuncCall(e, args);:}
-        | exp:e LP RP  {:RESULT = AstUtil.constructFuncCall(e, null);:}
-        | exp:e1 LB exp:e2 RB {:RESULT = AstUtil.constructArrIndex(e1, e2);:}
-        | exp:e1 DOT exp:e2 {:RESULT = AstUtil.constructGetField(e1, e2);:}
-        | ID:id {:RESULT = AstUtil.constructVarExp(AstUtil.constructVar(id));:}
-        | INT_LITERAL:val {:RESULT = AstUtil.constructLiteral(ParserSym.INT_LITERAL, val);:}
-        | FLOAT_LITERAL:val {:RESULT = AstUtil.constructLiteral(ParserSym.FLOAT_LITERAL, val);:}
-        | STRING_LITERAL:val {:RESULT = AstUtil.constructLiteral(ParserSym.STRING_LITERAL, val);:}
-        | CHAR_LITERAL:val {:RESULT = AstUtil.constructLiteral(ParserSym.CHAR_LITERAL, val);:}
+        | MINUS exp:e {:RESULT = new UnaryOp(ParserSym.MINUS, e);:}
+        | NOT exp:e {:RESULT = new UnaryOp(ParserSym.NOT, e);:}
+        | exp:e LP args:args RP {:RESULT = new FuncCall(e, args);:}
+        | exp:e LP RP  {:RESULT = new FuncCall(e, null);:}
+        | exp:e1 LB exp:e2 RB {:RESULT = new ArrIndex(e1, e2);:}
+        | exp:e1 DOT exp:e2 {:RESULT = new GetField(e1, e2);:}
+        | ID:id {:RESULT = new Var(id);:}
+        | INT_LITERAL:val {:RESULT = new Literal(ParserSym.INT_LITERAL, val);:}
+        | FLOAT_LITERAL:val {:RESULT = new Literal(ParserSym.FLOAT_LITERAL, val);:}
+        | STRING_LITERAL:val {:RESULT = new Literal(ParserSym.STRING_LITERAL, val);:}
+        | CHAR_LITERAL:val {:RESULT = new Literal(ParserSym.CHAR_LITERAL, val);:}
         ;
-args ::= exp:e {:RESULT = AstUtil.constructFuncArg(e, null);:}
-        | exp:e COMMA args:args {:RESULT = AstUtil.constructFuncArg(e, args);:}
+args ::= exp:e {:RESULT = new Arg(e, null);:}
+        | exp:e COMMA args:args {:Arg arg = new Arg(e, args);RESULT = arg;:}
         ;

@@ -1,6 +1,6 @@
 package com.compiler.test;
 
-import com.compiler.ast.Ast;
+import com.compiler.cparser.ast.Ast;
 import com.compiler.cparser.Parser;
 import com.compiler.lexer.Lexer;
 import java.io.FileReader;

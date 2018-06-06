@@ -29,6 +29,7 @@ import com.compiler.cparser.ast.node.VarDec;
 import com.compiler.cparser.ast.node.VarDef;
 import com.compiler.cparser.ast.node.VarDefList;
 import com.compiler.cparser.ast.node.WhileStmt;
+import com.compiler.semantic.symbol.SymbolTable;
 import com.compiler.semantic.type.Array;
 import com.compiler.semantic.type.Basic;
 import com.compiler.semantic.type.Field;
@@ -57,6 +58,10 @@ public class SemanticAnalyzer {
         flag = true;
     }
 
+    public SymbolTable getSymbolTable() {
+        return table;
+    }
+
     public void analyse() throws Exception {
         analyse(ast.getRoot());
 
@@ -72,30 +77,30 @@ public class SemanticAnalyzer {
 
         if (node instanceof Body) {
             Body body = (Body) node;
-            table.create();
+            table.enterScope(null);
             defType(body.getTypeDefs());
             defVar(body.getVarDefs());
             defFunc(body.getFuncDefs());
             FuncDef funcDef = body.getFuncDefs();
             while (funcDef != null) {
                 String name = funcDef.getDec().getName();
-                Func func = (Func) table.get(name);
+                Func func = (Func) table.get(name).getType();
                 currentReturnType = func.getReturnType();
                 analyse(funcDef);
                 funcDef = (FuncDef) funcDef.getNext();
             }
         } else if (node instanceof FuncDef) {
             FuncDef funcDef = (FuncDef) node;
-            table.create();
+            table.enterScope(table.getCurrent());
             defVar(funcDef.getDec());
             analyse(funcDef.getBody());
-            table.remove();
+            table.leaveScope();
         } else if (node instanceof CompStmt) {
             CompStmt compStmt = (CompStmt) node;
-            table.create();
+            table.enterScope(table.getCurrent());
             defVar(compStmt.getVarDefs());
             analyse(compStmt.getStmts());
-            table.remove();
+            table.leaveScope();
             analyse(compStmt.getNext());
         } else if (node instanceof IfStmt) {
             IfStmt ifStmt = (IfStmt) node;
@@ -301,7 +306,7 @@ public class SemanticAnalyzer {
                     type = getArray(type, varDec.getLengths());
                 }
 
-                table.add(varDec.getName(), type);
+                table.put(varDec.getName(), type);
             }
 
             varDec = varDec.getNext();
@@ -310,11 +315,11 @@ public class SemanticAnalyzer {
 
     public void defVar(FuncDec funcDec) {
         String name = funcDec.getName();
-        Func func = (Func) table.get(name);
+        Func func = (Func) table.get(name).getType();
         FuncParam funcParam = func.getParams();
 
         while (funcParam != null) {
-            table.add(funcParam.getName(), funcParam.getType());
+            table.put(funcParam.getName(), funcParam.getType());
             funcParam = funcParam.getNext();
         }
     }
@@ -339,7 +344,7 @@ public class SemanticAnalyzer {
 
             Type returnType = getType(funcDef.getSpecifier());
             FuncParam funcParam = getParam(funcDef.getDec().getParams());
-            table.add(name, new Func(returnType, funcParam));
+            table.put(name, new Func(returnType, funcParam));
 
             funcDef = (FuncDef) funcDef.getNext();
         }
@@ -460,12 +465,12 @@ public class SemanticAnalyzer {
                 return null;
             }
             String name = ((Var) exp1).getName();
-            Type type = table.get(name);
-            if (type == null) {
+            if (table.get(name) == null) {
                 System.out.println("Error at Line " + funcCall.getLine() + ": Undefined function " + "'" + name + "'.");
                 flag = false;
                 return null;
             }
+            Type type = table.get(name).getType();
             if (!(type instanceof Func)) {
                 System.out.println("Error at Line " + funcCall.getLine() + ": '" + name + "'" + " is not a function.");
                 flag = false;
@@ -487,7 +492,7 @@ public class SemanticAnalyzer {
                 return null;
             }
             String name = ((Var) exp1).getName();
-            Type type = table.get(name);
+            Type type = table.get(name).getType();
             if (!(type instanceof Array)) {
                 System.out.println("Error at Line " + arrIndex.getLine() + ": '" + name + "'" + " is not an array.");
                 flag = false;
@@ -508,12 +513,12 @@ public class SemanticAnalyzer {
                 return null;
             }
             String name = ((Var) exp1).getName();
-            Type type = table.get(name);
-            if (type == null) {
+            if (table.get(name) == null) {
                 System.out.println("Error at Line " + getField.getLine() + ": Struct '" + name + "'" + " is not defined.");
                 flag = false;
                 return null;
             }
+            Type type = table.get(name).getType();
             if (!(type instanceof Struct)) {
                 System.out.println("Error at Line " + getField.getLine() + ": Illegal use of operator '.'.");
                 flag = false;
@@ -529,12 +534,12 @@ public class SemanticAnalyzer {
             return res;
         } else if (exp instanceof Var) {
             String name = ((Var) exp).getName();
-            Type type = table.get(name);
-            if (type == null) {
+            if (table.get(name) == null) {
                 System.out.println("Error at Line " + exp.getLine() + ": Undefined variable '" + name + "'.");
                 flag = false;
+                return null;
             }
-            return type;
+            return table.get(name).getType();
         } else if (exp instanceof Literal) {
             Literal literal = (Literal) exp;
             switch (literal.getType()) {

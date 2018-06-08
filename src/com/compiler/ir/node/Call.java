@@ -1,6 +1,4 @@
-package com.compiler.semantic.symbol;
-
-import com.compiler.semantic.type.Type;
+package com.compiler.ir.node;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,9 +9,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class SymbolInfo {
-    private Type type;
-    private int offset;
+public class Call extends IrNode {
     private String name;
-    private int size;
+    private String result;
 }

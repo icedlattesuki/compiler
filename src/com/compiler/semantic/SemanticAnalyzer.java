@@ -37,6 +37,7 @@ import com.compiler.semantic.type.Func;
 import com.compiler.semantic.type.FuncParam;
 import com.compiler.semantic.type.Struct;
 import com.compiler.semantic.type.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,8 @@ public class SemanticAnalyzer {
     private Map<String, Type> map;
     private boolean flag;
     private Type currentReturnType;
+    private ArrayList<Integer> offsetStack = new ArrayList<>();
+    private int count = 0;
 
     public SemanticAnalyzer(Ast ast) {
         this.ast = ast;
@@ -78,6 +81,7 @@ public class SemanticAnalyzer {
         if (node instanceof Body) {
             Body body = (Body) node;
             table.enterScope(null);
+            offsetStack.add(0);
             defType(body.getTypeDefs());
             defVar(body.getVarDefs());
             defFunc(body.getFuncDefs());
@@ -92,15 +96,19 @@ public class SemanticAnalyzer {
         } else if (node instanceof FuncDef) {
             FuncDef funcDef = (FuncDef) node;
             table.enterScope(table.getCurrent());
+            offsetStack.add(0);
             defVar(funcDef.getDec());
             analyse(funcDef.getBody());
             table.leaveScope();
+            offsetStack.remove(offsetStack.size() - 1);
         } else if (node instanceof CompStmt) {
             CompStmt compStmt = (CompStmt) node;
             table.enterScope(table.getCurrent());
+            offsetStack.add(0);
             defVar(compStmt.getVarDefs());
             analyse(compStmt.getStmts());
             table.leaveScope();
+            offsetStack.remove(offsetStack.size() - 1);
             analyse(compStmt.getNext());
         } else if (node instanceof IfStmt) {
             IfStmt ifStmt = (IfStmt) node;
@@ -121,12 +129,12 @@ public class SemanticAnalyzer {
             analyse(whileStmt.getNext());
         } else if (node instanceof ForStmt) {
             ForStmt forStmt = (ForStmt) node;
-            analyse(forStmt.getExp1());
+            analyseExp(forStmt.getExp1());
             if (!isLogic(analyseExp(forStmt.getExp2()))) {
                 System.out.println("Error at Line " + forStmt.getExp2().getLine() + ": Invalid condition.");
                 flag = false;
             }
-            analyse(forStmt.getExp3());
+            analyseExp(forStmt.getExp3());
             analyse(forStmt.getStmt());
             analyse(forStmt.getNext());
         } else if (node instanceof ReturnStmt) {
@@ -306,7 +314,9 @@ public class SemanticAnalyzer {
                     type = getArray(type, varDec.getLengths());
                 }
 
-                table.put(varDec.getName(), type);
+                table.put(varDec.getName(), type, offsetStack.get(offsetStack.size() - 1), count, getSize(type));
+                offsetStack.set(offsetStack.size() - 1, offsetStack.get(offsetStack.size() - 1) + getSize(type));
+                count++;
             }
 
             varDec = varDec.getNext();
@@ -319,7 +329,9 @@ public class SemanticAnalyzer {
         FuncParam funcParam = func.getParams();
 
         while (funcParam != null) {
-            table.put(funcParam.getName(), funcParam.getType());
+            table.put(funcParam.getName(), funcParam.getType(), offsetStack.get(offsetStack.size() - 1), count, getSize(funcParam.getType()));
+            offsetStack.set(offsetStack.size() - 1, offsetStack.get(offsetStack.size() - 1) + getSize(funcParam.getType()));
+            count++;
             funcParam = funcParam.getNext();
         }
     }
@@ -344,7 +356,7 @@ public class SemanticAnalyzer {
 
             Type returnType = getType(funcDef.getSpecifier());
             FuncParam funcParam = getParam(funcDef.getDec().getParams());
-            table.put(name, new Func(returnType, funcParam));
+            table.put(name, new Func(returnType, funcParam), 0, -1, 0);
 
             funcDef = (FuncDef) funcDef.getNext();
         }
@@ -502,7 +514,11 @@ public class SemanticAnalyzer {
                 System.out.println("Error at Line " + arrIndex.getLine() + ": Type of index should be int.");
                 flag = false;
             }
-            return analyseExp(exp1);
+            Array array = (Array) type;
+            while (array.getType() instanceof Array) {
+                array = (Array) array.getType();
+            }
+            return array.getType();
         } else if (exp instanceof GetField) {
             GetField getField = (GetField) exp;
             Exp exp1 = getField.getVar1();
@@ -672,5 +688,39 @@ public class SemanticAnalyzer {
         }
 
         return arg == null && param == null;
+    }
+
+    public static int getSize(Type type) {
+        if (type instanceof Basic) {
+            Basic basic = (Basic) type;
+            switch (basic.getType()) {
+                case ParserSym.INT:
+                case ParserSym.FLOAT: {
+                    return 4;
+                }
+                case ParserSym.CHAR: {
+                    return 1;
+                }
+            }
+        } else if (type instanceof Struct) {
+            Struct struct = (Struct) type;
+            int res = 0;
+            Field field = struct.getFields();
+            while (field != null) {
+                res += getSize(field.getType());
+                field = field.getNext();
+            }
+            return res;
+        } else if (type instanceof Array) {
+            Array array = (Array) type;
+            int res = array.getSize();
+            while (array.getType() instanceof Array) {
+                array = (Array) array.getType();
+                res *= array.getSize();
+            }
+            return res * getSize(array.getType());
+        }
+
+        return 0;
     }
 }

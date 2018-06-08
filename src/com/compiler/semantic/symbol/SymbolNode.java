@@ -18,4 +18,5 @@ public class SymbolNode {
     private SymbolNode right;
     private SymbolNode sibling;
     private SymbolNode parent;
+    private int color = 0;
 }

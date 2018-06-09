@@ -1,0 +1,11 @@
+struct s1 {
+   int a;
+   float b;
+};
+
+int main() {
+    struct s1 s;
+    s.a = 1;
+    s.b = 2.0;
+    return s.a;
+}

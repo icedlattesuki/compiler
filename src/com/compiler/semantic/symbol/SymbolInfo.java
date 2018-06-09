@@ -13,7 +13,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SymbolInfo {
     private Type type;
-    private int offset;
     private String name;
     private int size;
 }

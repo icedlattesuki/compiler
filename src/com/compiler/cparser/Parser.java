@@ -8,6 +8,7 @@ package com.compiler.cparser;
 import com.compiler.cparser.ast.*;
 import com.compiler.cparser.ast.node.*;
 import com.compiler.cparser.ParserSym;
+import com.compiler.exception.SyntaxError;
 import java_cup.runtime.*;
 import java.util.ArrayList;
 import java_cup.runtime.XMLElement;
@@ -419,11 +420,11 @@ public class Parser extends java_cup.runtime.lr_parser {
 
 
         public void syntax_error(Symbol cur_token) {
-            System.out.println("Syntax error in line " + cur_token.left);
+            throw new SyntaxError("Error at Line " + cur_token.left + ": Syntax error.");
         }
 
         public void report_fatal_error(String message, Object info) throws Exception {
-            throw new Exception("syntax error!");
+            throw new Exception("syntax error.");
         }
 
 
@@ -786,10 +787,10 @@ class CUP$Parser$actions {
           case 23: // var_list ::= param_dec 
             {
               Param RESULT =null;
-		int paramleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int paramright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		Param param = (Param)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		RESULT = param;
+		int parameterleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int parameterright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		Param parameter = (Param)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		RESULT = parameter;
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("var_list",13, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -1431,7 +1432,7 @@ class CUP$Parser$actions {
 		int argsleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
 		int argsright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Arg args = (Arg)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		Arg arg = new Arg(e, args);RESULT = arg;RESULT.setLine(e.getLine());
+		Arg argument = new Arg(e, args);RESULT = argument;RESULT.setLine(e.getLine());
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("args",21, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;

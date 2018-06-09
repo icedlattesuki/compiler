@@ -1,14 +1,15 @@
-package com.compiler.ir.node;
+package com.compiler.semantic.type;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
-public class Param extends IrNode {
+public class StructField {
     private String name;
+    private Type type;
+    private StructField next;
+    private int line;
 }

@@ -1,38 +1,25 @@
 package com.compiler.ir;
 
-import com.compiler.cparser.Parser;
 import com.compiler.cparser.ParserSym;
-import com.compiler.cparser.ast.Ast;
-import com.compiler.cparser.ast.node.VarDef;
-import com.compiler.ir.node.Arg;
+import com.compiler.ir.node.Argument;
 import com.compiler.ir.node.Assign;
-import com.compiler.ir.node.BinaryOp;
-import com.compiler.ir.node.Call;
+import com.compiler.ir.node.BinaryOperator;
+import com.compiler.ir.node.FunctionCall;
 import com.compiler.ir.node.ConditionJump;
 import com.compiler.ir.node.Dec;
 import com.compiler.ir.node.Function;
+import com.compiler.ir.node.Parameter;
 import com.compiler.ir.node.Goto;
 import com.compiler.ir.node.IrNode;
 import com.compiler.ir.node.Label;
-import com.compiler.ir.node.Param;
 import com.compiler.ir.node.Return;
 import com.compiler.ir.operand.Address;
 import com.compiler.ir.operand.Constant;
 import com.compiler.ir.operand.Memory;
 import com.compiler.ir.operand.Operand;
 import com.compiler.ir.operand.Variable;
-import com.compiler.semantic.symbol.SymbolTable;
-import com.compiler.semantic.type.Func;
-import com.sun.org.apache.bcel.internal.generic.GOTO;
-import com.sun.org.apache.xpath.internal.functions.FuncTranslate;
 
-import sun.tools.jconsole.ConnectDialog;
-
-import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.util.Deque;
-
-import lombok.AllArgsConstructor;
 
 /**
  * IR树定义
@@ -47,8 +34,16 @@ public class IrList {
         this.tail = tail;
     }
 
-    public void setPrinter(PrintWriter writer) {
+    public void setWriter(PrintWriter writer) {
         this.writer = writer;
+    }
+
+    public IrNode getHead() {
+        return head;
+    }
+
+    public IrNode getTail() {
+        return tail;
     }
 
     public void print() {
@@ -78,20 +73,20 @@ public class IrList {
             writer.print(" := ");
             print(assign.getRight());
             writer.println();
-        } else if (node instanceof BinaryOp) {
-            BinaryOp binaryOp = (BinaryOp) node;
-            if (binaryOp.getResult() != null) {
-                writer.print(binaryOp.getResult() + " := ");
+        } else if (node instanceof BinaryOperator) {
+            BinaryOperator binaryOperator = (BinaryOperator) node;
+            if (binaryOperator.getResult() != null) {
+                writer.print(binaryOperator.getResult() + " := ");
             }
-            print(binaryOp.getOperand1());
-            switch (binaryOp.getOp()) {
+            print(binaryOperator.getOperand1());
+            switch (binaryOperator.getOp()) {
                 case ParserSym.PLUS: writer.print(" + "); break;
                 case ParserSym.MINUS: writer.print(" - "); break;
                 case ParserSym.MUL: writer.print(" * "); break;
                 case ParserSym.DIV: writer.print(" / "); break;
                 case ParserSym.MOD: writer.print(" % "); break;
             }
-            print(binaryOp.getOperand2());
+            print(binaryOperator.getOperand2());
             writer.println();
         } else if (node instanceof Goto) {
             writer.println("GOTO " + ((Goto) node).getX());
@@ -119,20 +114,20 @@ public class IrList {
         } else if (node instanceof Dec) {
             Dec dec = (Dec) node;
             writer.println("DEC " + dec.getName() + " [" + dec.getSize() + "]");
-        } else if (node instanceof Arg) {
-            Arg arg = (Arg) node;
+        } else if (node instanceof Argument) {
+            Argument argument = (Argument) node;
             writer.print("ARG ");
-            print(arg.getOperand());
+            print(argument.getOperand());
             writer.println();
-        } else if (node instanceof Call) {
-            Call call = (Call) node;
-            if (call.getResult() != null) {
-                writer.print(call.getResult() + " := ");
+        } else if (node instanceof FunctionCall) {
+            FunctionCall functionCall = (FunctionCall) node;
+            if (functionCall.getResult() != null) {
+                writer.print(functionCall.getResult() + " := ");
             }
-            writer.println("CALL " + call.getName());
-        } else if (node instanceof Param) {
-            Param param = (Param) node;
-            writer.println("PARAM " + param.getName());
+            writer.println("CALL " + functionCall.getName());
+        } else if (node instanceof Parameter) {
+            Parameter parameter = (Parameter) node;
+            writer.println("PARAM " + parameter.getName());
         }
     }
 

@@ -1,7 +1,6 @@
 package com.compiler.ir.node;
 
-import com.compiler.ir.operand.Operand;
-
+import com.compiler.ir.operand.Variable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,8 +11,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ConditionJump extends IrNode {
-    private Operand operand1;
-    private Operand operand2;
+    private Variable operand1;
+    private Variable operand2;
     private int op;
     private int x;
 }

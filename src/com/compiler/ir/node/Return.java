@@ -1,7 +1,6 @@
 package com.compiler.ir.node;
 
 import com.compiler.ir.operand.Operand;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

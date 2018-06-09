@@ -11,6 +11,6 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Arg extends IrNode {
+public class Argument extends IrNode {
     private Operand operand;
 }

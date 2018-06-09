@@ -9,5 +9,5 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Struct extends Type {
     private String name;
-    private Field fields;
+    private StructField fields;
 }

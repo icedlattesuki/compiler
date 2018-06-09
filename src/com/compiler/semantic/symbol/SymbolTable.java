@@ -42,11 +42,11 @@ public class SymbolTable {
         currentNode = currentNode.getParent();
     }
 
-    public void put(String name, Type type, int offset, int count, int size) {
+    public void put(String name, Type type, int count, int size) {
         Map<String, SymbolInfo> map = currentNode.getMap();
 
         if (map.get(name) == null) {
-            map.put(name, new SymbolInfo(type, offset, "v" + Integer.toString(count), size));
+            map.put(name, new SymbolInfo(type, "v" + Integer.toString(count), size));
         }
     }
 

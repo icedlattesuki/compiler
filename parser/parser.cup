@@ -3,6 +3,7 @@ package com.compiler.cparser;
 import com.compiler.cparser.ast.*;
 import com.compiler.cparser.ast.node.*;
 import com.compiler.cparser.ParserSym;
+import com.compiler.exception.SyntaxError;
 import java_cup.runtime.*;
 import java.util.ArrayList;
 
@@ -10,7 +11,7 @@ class Parser;
 
 parser code {:
         public void syntax_error(Symbol cur_token) {
-            System.out.println("Error at Line " + cur_token.left + ": Syntax error.");
+            throw new SyntaxError("Error at Line " + cur_token.left + ": Syntax error.");
         }
 
         public void report_fatal_error(String message, Object info) throws Exception {
@@ -126,7 +127,7 @@ var_dec ::= ID:id {:RESULT = new VarDec(id, null, null, null);RESULT.setLine(cur
 func_dec ::= ID:id LP var_list:params RP {:RESULT = new FuncDec(id, params);RESULT.setLine(cur_token.left);:}
             | ID:id LP RP {:RESULT = new FuncDec(id, null);RESULT.setLine(cur_token.left);:}
             ;
-var_list ::= param_dec:param {:RESULT = param;:}
+var_list ::= param_dec:parameter {:RESULT = parameter;:}
             | param_dec:param1 COMMA var_list:param2 {:param1.setNext(param2);RESULT = param1;:}
             ;
 param_dec ::= specifier:sp var_dec:dec {:RESULT = new Param(sp, dec, null);RESULT.setLine(dec.getLine());:};
@@ -183,5 +184,5 @@ exp ::= exp:e1 ASSIGN exp:e2 {:RESULT = new BinaryOp(ParserSym.ASSIGN, e1, e2);R
         | CHAR_LITERAL:val {:RESULT = new Literal(ParserSym.CHAR_LITERAL, val);RESULT.setLine(cur_token.left);:}
         ;
 args ::= exp:e {:RESULT = new Arg(e, null);RESULT.setLine(e.getLine());:}
-        | exp:e COMMA args:args {:Arg arg = new Arg(e, args);RESULT = arg;RESULT.setLine(e.getLine());:}
+        | exp:e COMMA args:args {:Arg argument = new Arg(e, args);RESULT = argument;RESULT.setLine(e.getLine());:}
         ;

@@ -1,0 +1,17 @@
+FUNCTION main :
+DEC v1 [8]
+t1 := #1
+t2 := &v1
+t3 := #0
+t2 := t2 + t3
+*t2 := t1
+t1 := #2.0
+t2 := &v1
+t3 := #4
+t2 := t2 + t3
+*t2 := t1
+t2 := &v1
+t3 := #0
+t2 := t2 + t3
+t1 := *t2
+RETURN t1

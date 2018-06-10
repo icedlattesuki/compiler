@@ -1,13 +1,11 @@
 package com.compiler.llvmir;
 
 import com.compiler.cparser.ParserSym;
-import com.compiler.cparser.ParserSymMap;
 import com.compiler.cparser.ast.Ast;
 
 import static org.bytedeco.javacpp.LLVM.*;
 
 import com.compiler.cparser.ast.node.*;
-import com.compiler.semantic.SemanticAnalyzer;
 import com.compiler.semantic.symbol.SymbolInfo;
 import com.compiler.semantic.symbol.SymbolTable;
 import com.compiler.semantic.type.*;
@@ -86,6 +84,21 @@ public class LLVMIR {
         LLVMDumpModule(mod);
     }
 
+//    public void genMachineCode(String fileName){
+//        LLVMInitializeAllTargetInfos();
+//        LLVMInitializeAllTargets();
+//        LLVMInitializeAllTargetMCs();
+//        LLVMInitializeAllAsmParsers();
+//        LLVMInitializeAllAsmPrinters();
+//
+//        BytePointer triple = LLVMGetDefaultTargetTriple();
+//
+//        LLVMGetTargetFromTriple(triple,,error)
+//        LLVMCreateTargetMachine()
+//        LLVMTargetMachineEmitToFile(,mod,fileName,1,error);
+//        LLVMDisposeMessage(error);
+//    }
+
     public void test() throws Exception {
         genCode(root);
         runPasses();
@@ -119,8 +132,8 @@ public class LLVMIR {
                 List<LLVMTypeRef> llvmFieldsRef = new ArrayList<>();
 
 
-                Field head = null;
-                Field tail = null;
+                StructField head = null;
+                StructField tail = null;
                 int fieldCount = 0;
 
                 // Process every define line
@@ -162,26 +175,26 @@ public class LLVMIR {
                                 }
                             }
 
-                            // Update llvm Field
+                            // Update llvm StructField
                             llvmFieldsRef.add(llvmarray);
-                            // Update Field
+                            // Update StructField
                             if (head == null) {
-                                head = new Field(varDec.getName(), array, null, varDef.getLine());
+                                head = new StructField(varDec.getName(), array, null, varDef.getLine());
                                 tail = head;
                             } else {
-                                tail.setNext(new Field(varDec.getName(), array, null, varDef.getLine()));
+                                tail.setNext(new StructField(varDec.getName(), array, null, varDef.getLine()));
                                 tail = tail.getNext();
                             }
                         } else {
                             // Not array
-                            // Update llvm Field
+                            // Update llvm StructField
                             llvmFieldsRef.add(lineType.getLlvmtype());
-                            // Update Field
+                            // Update StructField
                             if (head == null) {
-                                head = new Field(varDec.getName(), lineType, null, varDef.getLine());
+                                head = new StructField(varDec.getName(), lineType, null, varDef.getLine());
                                 tail = head;
                             } else {
-                                tail.setNext(new Field(varDec.getName(), lineType, null, varDef.getLine()));
+                                tail.setNext(new StructField(varDec.getName(), lineType, null, varDef.getLine()));
                                 tail = tail.getNext();
                             }
 
@@ -205,7 +218,7 @@ public class LLVMIR {
                 // Record this struct
                 Struct newStruct = new Struct(structName, head);
                 newStruct.setLlvmtype(newType);
-                structs.put(structName, newStruct);
+                structs.put(structName, newStruct,null);
             } else {
                 throw new Exception(node.getClass().getTypeName());
             }
@@ -823,14 +836,14 @@ public class LLVMIR {
         return info.getValue();
     }
 
-    private int findFieldCount(Field field, String name) {
+    private int findFieldCount(StructField structField, String name) {
         int fieldcount = 0;
-        while (field != null) {
-            if (field.getName().equals(name)) {
+        while (structField != null) {
+            if (structField.getName().equals(name)) {
                 break;
             }
             fieldcount++;
-            field = field.getNext();
+            structField = structField.getNext();
         }
         return fieldcount;
     }

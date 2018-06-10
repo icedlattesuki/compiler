@@ -7,7 +7,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class Struct extends Type {
+public class StructField {
     private String name;
-    private StructField fields;
+    private Type type;
+    private StructField next;
+    private int line;
 }

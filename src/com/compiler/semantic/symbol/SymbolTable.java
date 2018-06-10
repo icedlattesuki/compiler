@@ -11,6 +11,20 @@ import java.util.Map;
 public class SymbolTable {
     private SymbolNode currentNode;
 
+    public void enterScope() {
+        SymbolNode node = currentNode.getLeft();
+
+        while (node != null) {
+            if (node.getColor() == 0) {
+                currentNode = node;
+                currentNode.setColor(1);
+                return;
+            } else {
+                node = node.getSibling();
+            }
+        }
+    }
+
     public void enterScope(SymbolNode parent) {
         SymbolNode node = new SymbolNode();
         if (parent != null) {
@@ -30,11 +44,11 @@ public class SymbolTable {
         currentNode = currentNode.getParent();
     }
 
-    public void put(String name, Type type) {
+    public void put(String name, Type type, int count, int size) {
         Map<String, SymbolInfo> map = currentNode.getMap();
 
         if (map.get(name) == null) {
-            map.put(name, new SymbolInfo(type,null));
+            map.put(name, new SymbolInfo(type, "v" + Integer.toString(count), size,null));
         }
     }
 
@@ -42,7 +56,7 @@ public class SymbolTable {
         Map<String, SymbolInfo> map = currentNode.getMap();
 
         if (map.get(name) == null) {
-            map.put(name, new SymbolInfo(type,value));
+            map.put(name, new SymbolInfo(type,null,0,value));
         }
     }
 

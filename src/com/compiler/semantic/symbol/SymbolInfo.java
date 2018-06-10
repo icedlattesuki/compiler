@@ -14,5 +14,7 @@ import org.bytedeco.javacpp.LLVM;
 @NoArgsConstructor
 public class SymbolInfo {
     private Type type;
+    private String name;
+    private int size;
     private LLVM.LLVMValueRef value;
 }

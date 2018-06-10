@@ -115,16 +115,23 @@
 //    int b = !a;
 //    return b;
 //}
-
-//struct s1 h[10];
-//int f1(int a, int b, int c) {
-//    int res =  a;
+struct s1{
+    int a;
+    int b;
+    int c[10];
+};
+struct s1 h[10];
+int f1(int a, int b, int c) {
+    int res =  a;
+    h[2].c[2] = a;
+    h[2].c[2] = h[2].c[2] + 1;
+    res = h[2].c[2];
 //    res = res * a / b % c;
-//    return res;
-//}
+    return res;
+}
 int main(int a){
     int array[5];
-    int res = f6(-1);
+    int res = f1(4,3,3);
     return res;
 }
 

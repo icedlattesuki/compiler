@@ -46,26 +46,23 @@ public class LLVMIR {
         LLVMInitializeNativeAsmParser();
         LLVMInitializeNativeDisassembler();
         LLVMInitializeNativeTarget();
-
-
     }
 
     public void runPasses() {
         LLVMPassManagerRef pass = LLVMCreatePassManager();
 
-//        LLVMAddConstantPropagationPass(pass);
-//        LLVMAddInstructionCombiningPass(pass);
-//        LLVMAddPromoteMemoryToRegisterPass(pass);
+        LLVMAddConstantPropagationPass(pass);
+        LLVMAddInstructionCombiningPass(pass);
+        LLVMAddPromoteMemoryToRegisterPass(pass);
 //         LLVMAddDemoteMemoryToRegisterPass(pass); // Demotes every possible value to memory
-//        LLVMAddGVNPass(pass);
-//        LLVMAddCFGSimplificationPass(pass);
+        LLVMAddGVNPass(pass);
+        LLVMAddCFGSimplificationPass(pass);
         LLVMRunPassManager(pass, mod);
 
         LLVMDisposePassManager(pass);
     }
 
     public void execMain() throws Exception {
-
         LLVMExecutionEngineRef engine = new LLVMExecutionEngineRef();
 
         if (LLVMCreateJITCompilerForModule(engine, mod, 2, error) != 0) {
@@ -79,6 +76,14 @@ public class LLVMIR {
         System.err.println();
         System.err.println("; Running main with JIT...");
         System.err.println("; Result: " + LLVMGenericValueToInt(exec_res, 0));
+    }
+    public void verifyCode() {
+        LLVMVerifyModule(mod, LLVMAbortProcessAction, error);
+        LLVMDisposeMessage(error); // Handler == LLVMAbortProcessAction -> No need to check errors
+    }
+
+    public void dumpCode() {
+        LLVMDumpModule(mod);
     }
 
     public void test() throws Exception {
@@ -101,30 +106,7 @@ public class LLVMIR {
         variables.leaveScope();
         structs.leaveScope();
     }
-
-    public void verifyCode() {
-        LLVMVerifyModule(mod, LLVMAbortProcessAction, error);
-        LLVMDisposeMessage(error); // Handler == LLVMAbortProcessAction -> No need to check errors
-    }
-
-    public void dumpCode() {
-        LLVMDumpModule(mod);
-    }
-
-
-    private LLVMTypeRef getLLVMBasicType(BasicType type) throws Exception {
-        switch (type.getType()) {
-            case ParserSym.INT:
-                return LLVMInt32Type();
-            case ParserSym.FLOAT:
-                return LLVMFloatType();
-            case ParserSym.CHAR:
-                return LLVMInt8Type();
-            default:
-                throw new Exception("Unknown BasicType");
-        }
-    }
-
+    // 生成类型定义
     private void genCode(TypeDef def) throws Exception {
 
         while (def != null) {
@@ -231,7 +213,7 @@ public class LLVMIR {
         }
     }
 
-
+    // 生成全局变量
     private void genCode(VarDef def) throws Exception {
         while (def != null) {
             Specifier spec = def.getSpecifier();
@@ -291,7 +273,7 @@ public class LLVMIR {
             def = (VarDef) def.getNext();
         }
     }
-
+    // 生成函数
     private void genCode(FuncDef def) throws Exception {
         while (def != null) {
             LLVMTypeRef llvmFuncType;
@@ -405,6 +387,7 @@ public class LLVMIR {
 
     }
 
+    // 生成CompStmt
     private void genCode(CompStmt body) throws Exception {
         variables.enterScope(variables.getCurrent());
         // Get varDefs
@@ -413,7 +396,49 @@ public class LLVMIR {
 
         variables.leaveScope();
     }
+    // 生成局部变量
+    private void genCode(VarDefList varDefList) throws Exception {
+        while (varDefList != null) {
+            VarDef varDef = varDefList.getVarDef();
+            Type varType = getType(varDef.getSpecifier());
+            VarDec vardec = varDef.getDecs();
+            LLVMValueRef value;
+            while (vardec != null) {
+                if (vardec.getLengths() != null) {
+                    // Array will not be initialized
+                    Type varDecType = getArrayType(varType, vardec.getLengths());
+                    genCode((Array) varDecType, vardec.getName(), false);
+                    // Allocate mem space
+                    value = genCode(varDecType,vardec.getName(),false);
+                    // Save value ref
+                    variables.put(vardec.getName(), varDecType, value);
+                } else {
+                    if (varType instanceof Struct) {
+                        // Struct will not be initialized
+                        // Allocate mem space
+                        value = genCode(varType,vardec.getName(),false);
+                        // Save value ref
+                        variables.put(vardec.getName(), varType, value);
 
+                    } else {
+                        // Basic type can be initialized
+                        // Allocate mem space
+                        value = genCode(varType,vardec.getName(),false);
+                        // Save value ref
+                        variables.put(vardec.getName(), varType, value);
+
+                        if (vardec.getExp() != null) {
+                            // Initialize using Exp
+                            LLVMBuildStore(builder, genCode(vardec.getExp()), value);
+                        }
+                    }
+                }
+                vardec = vardec.getNext();
+            }
+            varDefList = varDefList.getNext();
+        }
+    }
+    // 生成Stmt
     private void genCode(Stmt stmt) throws Exception {
         while (stmt != null) {
             if (stmt instanceof CompStmt) {
@@ -504,6 +529,18 @@ public class LLVMIR {
         LLVMPositionBuilderAtEnd(builder, loopend);
     }
 
+    // 各类变量类型生成变量
+    private LLVMValueRef genCode(Type type, String name, boolean global) throws Exception {
+        if (type instanceof Array) {
+            return genCode((Array) type, name, global);
+        } else if (type instanceof Struct) {
+            return genCode((Struct) type, name, global);
+        } else if (type instanceof Basic) {
+            return genCode((Basic) type, name, global);
+        } else {
+            throw new Exception("invalid type. line: " + type.getLine());
+        }
+    }
     private LLVMValueRef genCode(Array array, String name, boolean global) throws Exception {
         LLVMValueRef value;
 
@@ -545,61 +582,7 @@ public class LLVMIR {
         return value;
     }
 
-    private LLVMValueRef genCode(Type type, String name, boolean global) throws Exception {
-        if (type instanceof Array) {
-            return genCode((Array) type, name, global);
-        } else if (type instanceof Struct) {
-            return genCode((Struct) type, name, global);
-        } else if (type instanceof Basic) {
-            return genCode((Basic) type, name, global);
-        } else {
-            throw new Exception("invalid type. line: " + type.getLine());
-        }
-    }
-
-    private void genCode(VarDefList varDefList) throws Exception {
-        while (varDefList != null) {
-            VarDef varDef = varDefList.getVarDef();
-            Type varType = getType(varDef.getSpecifier());
-            VarDec vardec = varDef.getDecs();
-            LLVMValueRef value;
-            while (vardec != null) {
-                if (vardec.getLengths() != null) {
-                    // Array will not be initialized
-                    Type varDecType = getArrayType(varType, vardec.getLengths());
-                    genCode((Array) varDecType, vardec.getName(), false);
-                    // Allocate mem space
-                    value = genCode(varDecType,vardec.getName(),false);
-                    // Save value ref
-                    variables.put(vardec.getName(), varDecType, value);
-                } else {
-                    if (varType instanceof Struct) {
-                        // Struct will not be initialized
-                        // Allocate mem space
-                        value = genCode(varType,vardec.getName(),false);
-                        // Save value ref
-                        variables.put(vardec.getName(), varType, value);
-
-                    } else {
-                        // Basic type can be initialized
-                        // Allocate mem space
-                        value = genCode(varType,vardec.getName(),false);
-                        // Save value ref
-                        variables.put(vardec.getName(), varType, value);
-
-                        if (vardec.getExp() != null) {
-                            // Initialize using Exp
-                            LLVMBuildStore(builder, genCode(vardec.getExp()), value);
-                        }
-                    }
-                }
-                vardec = vardec.getNext();
-            }
-            varDefList = varDefList.getNext();
-        }
-    }
-
-
+    // 生成Exp中间值
     private LLVMValueRef genCode(Exp exp) throws Exception {
         if (exp instanceof FuncCall) {
             FuncCall funcCall = (FuncCall) exp;
@@ -628,6 +611,7 @@ public class LLVMIR {
 
     }
 
+    // 生成函数调用
     private LLVMValueRef genCode(FuncCall funcCall) throws Exception {
         // Find Function
         String funcName = ((Var) funcCall.getVar()).getName();
@@ -655,12 +639,7 @@ public class LLVMIR {
         return LLVMBuildCall(builder, info.getValue(), new PointerPointer(argsArray), argsList.size(), "call_" + funcName);
     }
 
-    private String getArrName(ArrIndex arrIndex){
-        if(arrIndex.getVar() instanceof ArrIndex){
-            return getArrName((ArrIndex)arrIndex.getVar());
-        }else return ((Var)arrIndex.getVar()).getName();
-    }
-
+    // 生成Array右值
     private LLVMValueRef genCode(ArrIndex arrIndex) throws Exception {
         // Find Array
         String name = getArrName(arrIndex);
@@ -734,7 +713,6 @@ public class LLVMIR {
         }
     }
 
-
     private LLVMValueRef genCode(Var var) throws Exception {
         SymbolInfo info = variables.get(var.getName());
         if (info == null) {
@@ -770,6 +748,7 @@ public class LLVMIR {
         }
     }
 
+
     private LLVMValueRef genCode(GetField getField) throws Exception {
         LLVMValueRef ptr = genPtr(getField.getVar1());
         Type leftType = getExpType(getField.getVar1());
@@ -784,6 +763,22 @@ public class LLVMIR {
         return LLVMBuildLoad(builder, ptr, ((Struct) leftType).getName() + "." + fieldName);
     }
 
+    // 各类左值
+    private LLVMValueRef genPtr(Exp exp) throws Exception {
+        if (exp instanceof ArrIndex) {
+            ArrIndex arrIndex = (ArrIndex) exp;
+            return genPtr(arrIndex);
+        } else if (exp instanceof Var) {
+            Var var = (Var) exp;
+            return genPtr(var);
+        } else if (exp instanceof GetField) {
+            GetField getField = (GetField) exp;
+            return genPtr(getField);
+        } else {
+            throw new Exception("error Lvalue type at line: " + exp.getLine());
+        }
+    }
+
     private LLVMValueRef genPtr(GetField getField) throws Exception {
         LLVMValueRef ptr = genPtr(getField.getVar1());
         Type leftType = getExpType(getField.getVar1());
@@ -794,6 +789,38 @@ public class LLVMIR {
         }
         Struct struct = (Struct) leftType;
         return LLVMBuildStructGEP(builder, ptr, findFieldCount(struct.getFields(), fieldName), ((Struct) leftType).getName());
+    }
+
+    private LLVMValueRef genPtr(ArrIndex arrIndex) throws Exception {
+        // Find Array
+        String name = getArrName(arrIndex);
+        List<LLVMValueRef> list=getArrayIndices(arrIndex);
+
+//        SymbolInfo info = variables.get(name);
+//        if (info == null) {
+//            throw new Exception("Array " + name + " not defined. line: " + arrIndex.getLine());
+//        }
+//        // Get Pointer
+//        Exp var = arrIndex.getVar();
+//        while (var instanceof ArrIndex){
+//            var=((ArrIndex) var).getVar();
+//        }
+
+        LLVMValueRef[] indices = new LLVMValueRef[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            indices[i]=list.get(i);
+        }
+        return LLVMBuildGEP(builder, genPtr(arrIndex.getVar()), new PointerPointer(indices), list.size(), "gep_array_" + name);
+    }
+
+
+    private LLVMValueRef genPtr(Var var) throws Exception {
+        String name = var.getName();
+        SymbolInfo info = variables.get(name);
+        if (info == null) {
+            throw new Exception("variable " + name + " not defined. line: " + var.getLine());
+        }
+        return info.getValue();
     }
 
     private int findFieldCount(Field field, String name) {
@@ -807,7 +834,14 @@ public class LLVMIR {
         }
         return fieldcount;
     }
-
+    private String getArrName(ArrIndex arrIndex) throws Exception{
+        if(arrIndex.getVar() instanceof ArrIndex){
+            return getArrName((ArrIndex)arrIndex.getVar());
+        }else if(arrIndex.getVar() instanceof GetField){
+            GetField getField = (GetField)arrIndex.getVar();
+            return((Var)getField.getVar2()).getName();
+        }else return ((Var)arrIndex.getVar()).getName();
+    }
     private Type getExpType(Exp exp) throws Exception {
         if (exp instanceof GetField) {
             return getExpType(((GetField) exp).getVar1());
@@ -831,42 +865,7 @@ public class LLVMIR {
         }
     }
 
-    private LLVMValueRef genPtr(Exp exp) throws Exception {
-        if (exp instanceof ArrIndex) {
-            ArrIndex arrIndex = (ArrIndex) exp;
-            return genPtr(arrIndex);
-        } else if (exp instanceof Var) {
-            Var var = (Var) exp;
-            return genPtr(var);
-        } else if (exp instanceof GetField) {
-            GetField getField = (GetField) exp;
-            return genPtr(getField);
-        } else {
-            throw new Exception("error Lvalue type at line: " + exp.getLine());
-        }
-    }
 
-    private LLVMValueRef genPtr(ArrIndex arrIndex) throws Exception {
-        // Find Array
-        String name = getArrName(arrIndex);
-        List<LLVMValueRef> list=getArrayIndices(arrIndex);
-
-        SymbolInfo info = variables.get(name);
-        if (info == null) {
-            throw new Exception("Array " + name + " not defined. line: " + arrIndex.getLine());
-        }
-        // Get Pointer
-        Exp var = arrIndex.getVar();
-        while (var instanceof ArrIndex){
-            var=((ArrIndex) var).getVar();
-        }
-
-        LLVMValueRef[] indices = new LLVMValueRef[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            indices[i]=list.get(i);
-        }
-        return LLVMBuildGEP(builder, genPtr((Var)var), new PointerPointer(indices), list.size(), "gep_array_" + name);
-    }
 
     private List<LLVMValueRef> getArrayIndices(ArrIndex arrIndex) throws Exception{
         List<LLVMValueRef> list;
@@ -881,14 +880,6 @@ public class LLVMIR {
         return list;
     }
 
-    private LLVMValueRef genPtr(Var var) throws Exception {
-        String name = var.getName();
-        SymbolInfo info = variables.get(name);
-        if (info == null) {
-            throw new Exception("variable " + name + " not defined. line: " + var.getLine());
-        }
-        return info.getValue();
-    }
 
     private Type getArrayType(Type type, List<Integer> lengths) {
         LLVMTypeRef llvmTypeRef = type.getLlvmtype();
@@ -920,4 +911,18 @@ public class LLVMIR {
         }
         return retType;
     }
+
+    private LLVMTypeRef getLLVMBasicType(BasicType type) throws Exception {
+        switch (type.getType()) {
+            case ParserSym.INT:
+                return LLVMInt32Type();
+            case ParserSym.FLOAT:
+                return LLVMFloatType();
+            case ParserSym.CHAR:
+                return LLVMInt8Type();
+            default:
+                throw new Exception("Unknown BasicType");
+        }
+    }
+
 }

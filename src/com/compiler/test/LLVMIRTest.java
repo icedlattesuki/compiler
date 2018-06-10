@@ -17,6 +17,8 @@ public class LLVMIRTest {
             LLVMIR ir = new LLVMIR(ast);
 
             ir.test();
+            ir.dumpIRToFile("IR.ir");
+            ir.genMachineCode("file");
 
         }catch (Exception e){
             System.err.println(e.toString());

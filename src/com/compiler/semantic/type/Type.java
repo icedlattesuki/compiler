@@ -1,5 +1,13 @@
 package com.compiler.semantic.type;
 
-public abstract class Type {
+import lombok.*;
+import org.bytedeco.javacpp.LLVM;
 
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public abstract class Type {
+    private int line;
+    private LLVM.LLVMTypeRef llvmtype;
 }

@@ -31,13 +31,8 @@ import com.compiler.cparser.ast.node.VarDefList;
 import com.compiler.cparser.ast.node.WhileStmt;
 import com.compiler.exception.SemanticError;
 import com.compiler.semantic.symbol.SymbolTable;
-import com.compiler.semantic.type.Array;
-import com.compiler.semantic.type.Basic;
+import com.compiler.semantic.type.*;
 import com.compiler.semantic.type.StructField;
-import com.compiler.semantic.type.Func;
-import com.compiler.semantic.type.FuncParam;
-import com.compiler.semantic.type.Struct;
-import com.compiler.semantic.type.Type;
 
 import java.util.HashMap;
 import java.util.List;

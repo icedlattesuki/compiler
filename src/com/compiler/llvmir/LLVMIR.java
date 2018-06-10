@@ -84,30 +84,45 @@ public class LLVMIR {
         LLVMDumpModule(mod);
     }
 
-//    public void genMachineCode(String fileName){
-//        LLVMInitializeAllTargetInfos();
-//        LLVMInitializeAllTargets();
-//        LLVMInitializeAllTargetMCs();
-//        LLVMInitializeAllAsmParsers();
-//        LLVMInitializeAllAsmPrinters();
+    public void dumpIRToFile(String filename){
+        LLVMPrintModuleToFile(mod,filename,error);
+    }
+
+    public void genMachineCode(String fileName){
+        LLVMInitializeAllTargetInfos();
+        LLVMInitializeAllTargets();
+        LLVMInitializeAllTargetMCs();
+        LLVMInitializeAllAsmParsers();
+        LLVMInitializeAllAsmPrinters();
+
+        BytePointer triple = LLVMGetDefaultTargetTriple();
+        LLVMTargetRef target = new LLVMTargetRef();
+        LLVMGetTargetFromTriple(triple,target,error);
+
+        LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target,triple,new BytePointer(),new BytePointer(),2,0,0);
+        LLVMDisposeTargetMachine(machine);
+
+        LLVMTargetMachineEmitToFile(machine,mod,new BytePointer(fileName),0,error);
 //
-//        BytePointer triple = LLVMGetDefaultTargetTriple();
+//        LLVMTargetMachineRef machine = LLVMCreateTargetMachine((LLVMTargetRef)target);
+//        System.out.println(machine);
+
 //
 //        LLVMGetTargetFromTriple(triple,,error)
 //        LLVMCreateTargetMachine()
-//        LLVMTargetMachineEmitToFile(,mod,fileName,1,error);
+//        LLVMTargetMachineEmitToFile(machine,mod,fileName,1,error);
 //        LLVMDisposeMessage(error);
-//    }
+    }
 
     public void test() throws Exception {
-        genCode(root);
+        genCode();
         runPasses();
         verifyCode();
         dumpCode();
         execMain();
     }
 
-    public void genCode(AstNode root) throws Exception {
+    public void genCode() throws Exception {
         Body body = (Body) root;
         structs.enterScope(null);
         genCode(body.getTypeDefs());

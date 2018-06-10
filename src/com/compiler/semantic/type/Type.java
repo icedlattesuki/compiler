@@ -1,9 +1,7 @@
 package com.compiler.semantic.type;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.bytedeco.javacpp.LLVM;
 
 @Getter
 @Setter
@@ -11,4 +9,5 @@ import lombok.Setter;
 @NoArgsConstructor
 public abstract class Type {
     private int line;
+    private LLVM.LLVMTypeRef llvmtype;
 }

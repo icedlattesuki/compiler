@@ -1,6 +1,8 @@
 package com.compiler.semantic.symbol;
 
 import com.compiler.semantic.type.Type;
+import org.bytedeco.javacpp.LLVM;
+
 import java.util.Map;
 
 /**
@@ -32,7 +34,15 @@ public class SymbolTable {
         Map<String, SymbolInfo> map = currentNode.getMap();
 
         if (map.get(name) == null) {
-            map.put(name, new SymbolInfo(type));
+            map.put(name, new SymbolInfo(type,null));
+        }
+    }
+
+    public void put(String name, Type type, LLVM.LLVMValueRef value) {
+        Map<String, SymbolInfo> map = currentNode.getMap();
+
+        if (map.get(name) == null) {
+            map.put(name, new SymbolInfo(type,value));
         }
     }
 
